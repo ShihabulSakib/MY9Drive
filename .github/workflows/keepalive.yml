@@ -1,0 +1,28 @@
+name: 9Drive Backend Keep-Alive
+
+on:
+  schedule:
+    # Runs every 10 minutes (Render free tier hibernates after 15 min)
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend Health Endpoint
+        run: |
+          BACKEND_URL="${{ secrets.BACKEND_URL }}"
+          if [ -z "$BACKEND_URL" ]; then
+            echo "BACKEND_URL secret is not set yet. Please add BACKEND_URL to repository secrets."
+            exit 0
+          fi
+          echo "Pinging $BACKEND_URL/health..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/health")
+          echo "Response HTTP status: $STATUS"
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
+            echo "Backend is awake and healthy!"
+          else
+            echo "Unexpected status code: $STATUS"
+            exit 1
+          fi
